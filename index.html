@@ -692,6 +692,8 @@
     const openedDays = new Set();
     let dayMessages = {};
 
+    const OPENED_DAYS_KEY = 'advent_opened_days';
+
     // Cargar mensajes desde archivo externo
     async function loadMessages() {
       try {
@@ -754,13 +756,31 @@
       }
     }
 
+    function saveOpenedDays() {
+      localStorage.setItem(OPENED_DAYS_KEY, JSON.stringify(Array.from(openedDays)));
+    }
+
+    function loadOpenedDays() {
+      const data = localStorage.getItem(OPENED_DAYS_KEY);
+      if (data) {
+        try {
+          const arr = JSON.parse(data);
+          arr.forEach(day => openedDays.add(Number(day)));
+        } catch {}
+      }
+    }
+
     function initCalendar() {
       const boxes = document.querySelectorAll('.day-box');
       const currentDay = 3; // 3 de diciembre
-      
+
+      // Restaurar progreso visual
+      loadOpenedDays();
       boxes.forEach(box => {
         const day = parseInt(box.getAttribute('data-day'));
-        
+        if (openedDays.has(day)) {
+          box.classList.add('opened');
+        }
         // Bloquear días futuros
         if (day > currentDay) {
           box.classList.add('locked');
@@ -802,6 +822,7 @@
             }
             
             updateCounter();
+            saveOpenedDays(); // Guardar progreso cada vez que cambia
           });
         }
       });
@@ -915,6 +936,7 @@
     loadMessages().then(() => {
       initCalendar();
       createSnowflakes();
+      updateCounter();
     });
   </script>
 </body>

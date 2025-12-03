@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendario de Adviento</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(to bottom, #1e3a5f 0%, #2d5a7b 50%, #3a6d8f 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      flex-direction: column;
+      padding: 20px;
+      font-family: 'Georgia', serif;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Efecto de nieve */
+    .snowflake {
+      position: fixed;
+      top: -50px;
+      color: #ffffff;
+      text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+      font-size: 20px;
+      user-select: none;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    @keyframes snowfall {
+      0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0.3;
+      }
+    }
+
+    #calendar-container {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      aspect-ratio: 1414 / 2000;
+      margin: 0 auto;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    #calendar-image {
+      width: 100%;
+      height: 100%;
+      display: block;
+      user-select: none;
+    }
+
+    .day-box {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      perspective: 1000px;
+    }
+
+    .box-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      background: transparent;
+    }
+
+    .box-lid {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      backdrop-filter: none;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      pointer-events: auto;
+    }
+
+    .day-number {
+      position: relative;
+      font-size: 32px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 255, 255, 0.4);
+      z-index: 1;
+      background: transparent;
+      backdrop-filter: none;
+      padding: 8px 15px;
+      border-radius: 50%;
+      min-width: 50px;
+      text-align: center;
+      box-shadow: none;
+      border: none;
+      display: none;
+    }
+
+    /* Caja abierta - se encoge hacia el centro y desaparece */
+    .day-box.opened .box-lid {
+      transform: scale(0) rotate(180deg);
+      opacity: 0;
+    }
+
+    /* Efecto hover */
+    .day-box:not(.opened):hover .box-lid {
+      transform: scale(1);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(4px);
+    }
+
+    /* Estado bloqueado */
+    .day-box.locked {
+      cursor: not-allowed;
+    }
+
+    .day-box.locked .box-lid {
+      background: transparent;
+      border-color: transparent;
+      backdrop-filter: none;
+      box-shadow: none;
+    }
+
+    .day-box.locked .day-number {
+      display: none;
+    }
+
+    .day-box.locked:hover .box-lid {
+      transform: none;
+      box-shadow: none;
+      background: transparent;
+    }
+
+    #counter {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 130px;
+      height: 130px;
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 50%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+      padding: 5px;
+    }
+
+    .progress-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-90deg);
+      width: 120px;
+      height: 120px;
+    }
+
+    .progress-ring-circle {
+      transition: stroke-dashoffset 0.5s ease;
+      stroke-linecap: round;
+    }
+
+    .progress-ring-circle-fill {
+      transition: stroke-dashoffset 0.5s ease;
+      stroke-linecap: round;
+    }
+
+    .counter-text {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: #1f2937;
+      line-height: 1.2;
+    }
+
+    #counter span {
+      color: #dc2626;
+      font-size: 20px;
+      font-weight: 800;
+      display: block;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      text-align: center;
+      max-width: 500px;
+      animation: modalAppear 0.4s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .modal-content::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, 
+        rgba(251, 191, 36, 0) 0%,
+        rgba(251, 191, 36, 0.08) 50%,
+        rgba(220, 38, 38, 0.05) 100%);
+      animation: gradientShift 8s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes gradientShift {
+      0%, 100% { 
+        background: linear-gradient(135deg, 
+          rgba(251, 191, 36, 0) 0%,
+          rgba(251, 191, 36, 0.08) 50%,
+          rgba(220, 38, 38, 0.05) 100%);
+      }
+      50% { 
+        background: linear-gradient(135deg, 
+          rgba(220, 38, 38, 0.05) 0%,
+          rgba(251, 191, 36, 0.12) 50%,
+          rgba(251, 191, 36, 0) 100%);
+      }
+    }
+
+    @keyframes modalAppear {
+      from {
+        opacity: 0;
+        transform: scale(0.8) translateY(-50px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .modal-content h2 {
+      color: #dc2626;
+      font-size: 32px;
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .modal-content p {
+      color: #374151;
+      font-size: 18px;
+      line-height: 1.6;
+      position: relative;
+      z-index: 1;
+    }
+
+    .modal-content a {
+      color: #0369a1;
+      text-decoration: underline;
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    .modal-content a:hover {
+      color: #075985;
+      text-decoration: none;
+    }
+
+    .close-modal {
+      margin-top: 30px;
+      padding: 12px 30px;
+      background-color: #dc2626;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      position: relative;
+      z-index: 1;
+      transition: all 0.3s ease;
+    }
+
+    .close-modal:hover {
+      background-color: #b91c1c;
+      transform: scale(1.05);
+    }
+
+    .confetti {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      background: #fbbf24;
+      pointer-events: none;
+      z-index: 999;
+      animation: confettiFall 3s linear;
+    }
+
+    @keyframes confettiFall {
+      0% {
+        transform: translateY(-100vh) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+      }
+    }
+
+    @keyframes sparkleFall {
+      0% {
+        opacity: 1;
+        transform: translateY(-100vh) rotate(0deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(100vh) rotate(360deg);
+      }
+    }
+
+    .sparkle {
+      position: fixed;
+      width: 8px;
+      height: 8px;
+      background: #fbbf24;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 998;
+      box-shadow: 0 0 6px #fbbf24;
+      animation: sparkleFall 2s linear forwards;
+    }
+
+    /* Animación de apertura de caja - efecto visible y dramático */
+    @keyframes lidFade {
+      0% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        filter: blur(0px);
+      }
+      40% {
+        opacity: 1;
+        transform: scale(1.2) translateY(-20px);
+        filter: blur(0px);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1.5) translateY(-80px);
+        filter: blur(15px);
+      }
+    }
+
+    /* Animación de brillo intenso y envolvente */
+    @keyframes softGlow {
+      0% {
+        background: transparent;
+        box-shadow: 0 0 0px rgba(251, 191, 36, 0);
+      }
+      20% {
+        background: rgba(251, 191, 36, 0.25);
+        box-shadow: 0 0 40px rgba(251, 191, 36, 0.6);
+      }
+      50% {
+        background: rgba(251, 191, 36, 0.2);
+        box-shadow: 0 0 80px rgba(251, 191, 36, 0.5), 0 0 120px rgba(251, 191, 36, 0.3);
+      }
+      100% {
+        background: transparent;
+        box-shadow: 0 0 150px rgba(251, 191, 36, 0.1);
+      }
+    }
+
+    /* Animación de borde brillante visible */
+    @keyframes innerSparkle {
+      0% {
+        border: 1px solid transparent;
+        text-shadow: none;
+      }
+      30% {
+        border: 3px solid rgba(251, 191, 36, 0.9);
+        text-shadow: 0 0 30px rgba(251, 191, 36, 0.8);
+      }
+      60% {
+        border: 2px solid rgba(251, 191, 36, 0.5);
+        text-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+      }
+      100% {
+        border: 1px solid transparent;
+        text-shadow: none;
+      }
+    }
+
+    /* Clase para aplicar animación de apertura */
+    .day-box.opening {
+      animation: none;
+    }
+
+    .day-box.opening .box-lid {
+      animation: lidFade 1s cubic-bezier(0.25, 0.46, 0.45, 0.94), softGlow 1s ease-out, innerSparkle 1s ease-out;
+      transform-origin: center center;
+    }
+
+    @media (max-width: 768px) {
+      #calendar-container {
+        max-width: 100%;
+        padding: 10px;
+      }
+      
+      #counter {
+        width: 110px;
+        height: 110px;
+        bottom: 15px;
+        right: 15px;
+        padding: 4px;
+      }
+
+      .progress-ring {
+        width: 100px;
+        height: 100px;
+      }
+
+      .counter-text {
+        font-size: 11px;
+      }
+      
+      #counter span {
+        font-size: 16px;
+      }
+
+      .day-number {
+        font-size: 16px;
+        padding: 4px 8px;
+        min-width: 30px;
+      }
+
+      /* Remover hover effects en touch devices */
+      .day-box:not(.opened):hover .box-lid {
+        transform: scale(1) !important;
+        background: rgba(255, 255, 255, 0.12) !important;
+      }
+
+      /* Active state para toques */
+      .day-box:not(.opened):active .box-lid {
+        transform: scale(0.95);
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .modal-content {
+        max-width: 90%;
+        padding: 25px;
+        border-radius: 15px;
+      }
+
+      .modal-title {
+        font-size: 20px;
+        margin-bottom: 15px;
+      }
+
+      .modal-message {
+        font-size: 14px;
+        line-height: 1.5;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="calendar-container">
+    <img id="calendar-image" src="resources/1.png" alt="Calendario de Adviento">
+    
+    <div class="day-box" data-day="1" style="left: 14.6%; top: 21.3%; width: 15.4%; height: 10.7%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">1</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="2" style="left: 32.9%; top: 23.0%; width: 15.6%; height: 14.2%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">2</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="3" style="left: 51.3%; top: 20.1%; width: 16.8%; height: 9.1%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">3</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="4" style="left: 69.4%; top: 22.5%; width: 14.7%; height: 13.8%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">4</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="5" style="left: 86.6%; top: 22.5%; width: 14.1%; height: 13.3%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">5</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="6" style="left: 14.3%; top: 33.2%; width: 15.6%; height: 8.1%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">6</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="7" style="left: 32.8%; top: 38.6%; width: 14.4%; height: 13.3%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">7</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="8" style="left: 50.8%; top: 33.3%; width: 15.4%; height: 14.0%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">8</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="9" style="left: 69.4%; top: 36.7%; width: 15.4%; height: 10.7%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">9</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="10" style="left: 87.0%; top: 37.9%; width: 14.3%; height: 13.4%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">10</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="11" style="left: 13.9%; top: 46.7%; width: 15.0%; height: 14.1%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">11</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="12" style="left: 32.4%; top: 54.1%; width: 14.4%; height: 13.4%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">12</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="13" style="left: 50.4%; top: 49.1%; width: 14.2%; height: 13.6%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">13</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="14" style="left: 69.4%; top: 51.6%; width: 15.3%; height: 14.1%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">14</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="15" style="left: 87.0%; top: 53.3%; width: 14.1%; height: 13.3%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">15</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="16" style="left: 13.9%; top: 63.2%; width: 15.2%; height: 14.5%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">16</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="17" style="left: 32.4%; top: 66.8%; width: 15.2%; height: 7.9%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">17</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="18" style="left: 50.3%; top: 63.0%; width: 14.4%; height: 10.4%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">18</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="19" style="left: 68.4%; top: 65.2%; width: 15.9%; height: 8.2%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">19</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="20" style="left: 86.3%; top: 65.9%; width: 15.7%; height: 8.4%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">20</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="21" style="left: 13.6%; top: 77.5%; width: 15.3%; height: 10.9%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">21</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="22" style="left: 32.4%; top: 79.5%; width: 14.9%; height: 13.7%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">22</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="23" style="left: 49.9%; top: 75.4%; width: 14.9%; height: 10.6%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">23</span>
+        </div>
+      </div>
+    </div>
+    <div class="day-box" data-day="24" style="left: 77.0%; top: 80.9%; width: 31.8%; height: 17.1%;">
+      <div class="box-container">
+        <div class="box-lid">
+          <span class="day-number">24</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="counter">
+    <svg class="progress-ring" width="120" height="120" viewBox="0 0 120 120">
+      <circle class="progress-ring-circle" stroke="#d1d5db" fill="none" stroke-width="5" r="50" cx="60" cy="60" />
+      <circle class="progress-ring-circle-fill" stroke="#dc2626" fill="none" stroke-width="5" r="50" cx="60" cy="60" stroke-dasharray="314.159" stroke-dashoffset="314.159" />
+    </svg>
+    <div class="counter-text">
+      <span id="count">0</span> / 24
+    </div>
+  </div>
+
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <h2 id="modal-title">🎁 ¡Día 1!</h2>
+      <p id="modal-message">¡Has abierto el primer día del calendario de adviento!</p>
+      <button class="close-modal" onclick="closeModal()">Cerrar</button>
+    </div>
+  </div>
+
+  <script>
+    const openedDays = new Set();
+    let dayMessages = {};
+
+    // Cargar mensajes desde archivo externo
+    async function loadMessages() {
+      try {
+        const response = await fetch('messages.json');
+        dayMessages = await response.json();
+      } catch (error) {
+        console.error('Error al cargar los mensajes:', error);
+        dayMessages = {};
+      }
+    }
+
+    function getCurrentDay() {
+      return 24;
+    }
+
+    function createConfetti() {
+      const colors = ['#fbbf24', '#dc2626', '#10b981', '#3b82f6'];
+      
+      for (let i = 0; i < 40; i++) {
+        setTimeout(() => {
+          const confetti = document.createElement('div');
+          confetti.className = 'confetti';
+          // Posición aleatoria en ancho pero desde arriba
+          confetti.style.left = Math.random() * 100 + '%';
+          confetti.style.top = '-20px';
+          confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+          confetti.style.width = (Math.random() * 6 + 4) + 'px';
+          confetti.style.height = confetti.style.width;
+          confetti.style.animationDelay = (Math.random() * 0.2) + 's';
+          confetti.style.animationDuration = (Math.random() * 1.5 + 2.5) + 's';
+          document.body.appendChild(confetti);
+          
+          setTimeout(() => {
+            if (confetti.parentNode) confetti.remove();
+          }, 4500);
+        }, i * 25);
+      }
+    }
+
+    function createSparkles(x, y) {
+      for (let i = 0; i < 12; i++) {
+        const sparkle = document.createElement('div');
+        sparkle.className = 'sparkle';
+        
+        // Posición aleatoria en el ancho, pero desde arriba
+        sparkle.style.left = (Math.random() * 40 + 30) + '%';
+        sparkle.style.top = '-50px';
+        
+        // Delay aleatorio
+        sparkle.style.animationDelay = (Math.random() * 0.2) + 's';
+        
+        document.body.appendChild(sparkle);
+        
+        // Limpiar después de animación
+        setTimeout(() => {
+          if (sparkle.parentNode) {
+            sparkle.remove();
+          }
+        }, 2500);
+      }
+    }
+
+    function initCalendar() {
+      const boxes = document.querySelectorAll('.day-box');
+      const currentDay = 3; // 3 de diciembre
+      
+      boxes.forEach(box => {
+        const day = parseInt(box.getAttribute('data-day'));
+        
+        // Bloquear días futuros
+        if (day > currentDay) {
+          box.classList.add('locked');
+          box.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+          });
+        } else {
+          box.addEventListener('click', function(e) {
+            if (openedDays.has(day)) {
+              openedDays.delete(day);
+              this.classList.remove('opened');
+            } else {
+              openedDays.add(day);
+              this.classList.add('opened');
+              this.classList.add('opening');
+              
+              const rect = this.getBoundingClientRect();
+              
+              // Mostrar sparkles durante la apertura
+              setTimeout(() => {
+                createSparkles(rect.left + rect.width / 2, rect.top + rect.height / 2);
+              }, 100);
+              
+              // Confeti en el pico de la animación
+              setTimeout(() => {
+                createConfetti();
+              }, 300);
+              
+              // Remover clase opening después de la animación
+              setTimeout(() => {
+                this.classList.remove('opening');
+              }, 1000);
+              
+              // Abrir modal después de que los efectos terminen
+              setTimeout(() => {
+                showModal(day, `🎁 ¡Día ${day}!`, dayMessages[day] || '¡Sorpresa del día!');
+              }, 2000);
+            }
+            
+            updateCounter();
+          });
+        }
+      });
+    }
+
+    function createSnowflakes() {
+      const snowflakeChars = ['❄', '❅', '❆', '•', '◦'];
+      
+      function addSnowflake() {
+        const snowflake = document.createElement('div');
+        snowflake.className = 'snowflake';
+        snowflake.innerHTML = snowflakeChars[Math.floor(Math.random() * snowflakeChars.length)];
+        
+        // Posición horizontal aleatoria
+        snowflake.style.left = Math.random() * 100 + '%';
+        
+        // Tamaño aleatorio
+        const size = Math.random() * 15 + 10;
+        snowflake.style.fontSize = size + 'px';
+        
+        // Duración aleatoria
+        const duration = Math.random() * 5 + 5;
+        snowflake.style.animation = `snowfall ${duration}s linear`;
+        
+        // Opacidad aleatoria
+        snowflake.style.opacity = Math.random() * 0.6 + 0.4;
+        
+        document.body.appendChild(snowflake);
+        
+        // Eliminar después de la animación
+        setTimeout(() => {
+          if (snowflake.parentNode) {
+            snowflake.remove();
+          }
+        }, duration * 1000);
+      }
+      
+      // Crear copos continuamente (más frecuente)
+      setInterval(addSnowflake, 80);
+      
+      // Crear muchos copos iniciales
+      for (let i = 0; i < 50; i++) {
+        setTimeout(addSnowflake, i * 50);
+      }
+    }
+
+    function showModal(day, title, message) {
+      document.getElementById('modal-title').textContent = title;
+
+      // Escapar HTML simple para evitar inyección
+      function escapeHtml(str) {
+        return String(str).replace(/[&<>\"]/g, function(s) {
+          return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]);
+        });
+      }
+
+      // Convertir URLs en enlaces seguros
+      function linkify(text) {
+        if (!text) return '';
+        const escaped = escapeHtml(text);
+        
+        // Reemplazar URLs de Spotify con texto amigable
+        const spotifyRegex = /(https?:\/\/open\.spotify\.com\/track\/[^\s"'<>]+)/gi;
+        let result = escaped.replace(spotifyRegex, function(url) {
+          const clean = url.replace(/[\.,;:!\)\]]+$/,'');
+          return `<a href="${clean}" target="_blank" rel="noopener noreferrer">🎵 Escúchame</a>`;
+        });
+        
+        // Reemplazar otras URLs (si las hay) con texto genérico
+        const otherUrlRegex = /(https?:\/\/[^\s"'<>]+)/gi;
+        result = result.replace(otherUrlRegex, function(url) {
+          // Si ya fue reemplazada por Spotify, saltar
+          if (url.includes('spotify')) return url;
+          const clean = url.replace(/[\.,;:!\)\]]+$/,'');
+          return `<a href="${clean}" target="_blank" rel="noopener noreferrer">🔗 Abre esto</a>`;
+        });
+        
+        return result;
+      }
+
+      document.getElementById('modal-message').innerHTML = linkify(message);
+      document.getElementById('modal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('active');
+    }
+
+    function updateCounter() {
+      const count = openedDays.size;
+      document.getElementById('count').textContent = count;
+      
+      // Calculate progress (0-24 days)
+      const progress = count / 24;
+      const circumference = 2 * Math.PI * 50; // radius = 50
+      const offset = circumference * (1 - progress);
+      
+      const progressCircle = document.querySelector('.progress-ring-circle-fill');
+      if (progressCircle) {
+        progressCircle.style.strokeDashoffset = offset;
+      }
+    }
+
+    document.getElementById('modal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeModal();
+      }
+    });
+
+    // Cargar mensajes e inicializar el calendario
+    loadMessages().then(() => {
+      initCalendar();
+      createSnowflakes();
+    });
+  </script>
+</body>
+</html>

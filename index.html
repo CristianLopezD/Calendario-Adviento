@@ -772,7 +772,11 @@
 
     function initCalendar() {
       const boxes = document.querySelectorAll('.day-box');
-      const currentDay = 4; // 3 de diciembre
+
+      // Obtener fecha actual
+      const colombiaTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+      const currentDay = colombiaTime.getDate(); // Día del mes (1-24)
+
 
       // Restaurar progreso visual
       loadOpenedDays();
@@ -941,4 +945,5 @@
   </script>
 </body>
 </html>
+
 
